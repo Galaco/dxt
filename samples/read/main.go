@@ -23,7 +23,8 @@ func main() {
 	buf := bytes.Buffer{}
 	buf.ReadFrom(file)
 
-	img.Decompress(buf.Bytes())
+	// Why not start at 0?
+	img.Decompress(buf.Bytes(), true)
 	out, _ := os.Create("out.png")
 
 

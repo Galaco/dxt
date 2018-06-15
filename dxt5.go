@@ -6,12 +6,14 @@ import (
 	"encoding/binary"
 	"bytes"
 	"github.com/galaco/dxt/common"
+	"errors"
 )
 
 // Dxt5
 // Dxt5 Image fulfills the standard golang image interface.
 // It also fulfils a slightly more specialised Dxt interface in the package.
 type Dxt5 struct {
+	Header Header
 	Pix []uint8
 	Stride int
 	Rect image.Rectangle
@@ -69,12 +71,25 @@ func (p *Dxt5) Set(x, y int, c color.Color) {
 
 // Decompress
 // Decompresses and populates the image from packed dxt5 data
-func (p *Dxt5) Decompress(packed []byte) error {
-	argb,err := decompressDxt5(packed, p.Rect.Dx(), p.Rect.Dy())
+func (p *Dxt5) Decompress(packed []byte, withHeader bool) error {
+	var rgba []color.RGBA
+	var err error
+	if withHeader == true {
+		var header Header
+		binary.Read(bytes.NewBuffer(packed[:128]), binary.LittleEndian, &header)
+		if header.Id != 0x20534444 {
+			return errors.New("dds format identifier mismatch")
+		}
+		p.Header = header
+		rgba,err = decompressDxt5(packed[128:], p.Rect.Dx(), p.Rect.Dy())
+	} else {
+		rgba,err = decompressDxt5(packed, p.Rect.Dx(), p.Rect.Dy())
+	}
+
 	if err != nil {
 		return err
 	}
-	for i,c := range argb {
+	for i,c := range rgba {
 		i *= 4
 		p.Pix[i] = c.R
 		p.Pix[i+1] = c.G
@@ -90,7 +105,12 @@ func (p *Dxt5) Decompress(packed []byte) error {
 func NewDxt5(r image.Rectangle) *Dxt5 {
 	w, h := r.Dx(), r.Dy()
 	buf := make([]uint8, 4*w*h)
-	return &Dxt5{buf, 4 * w, r}
+	return &Dxt5{
+		Header: Header{},
+		Pix: buf,
+		Stride: 4 * w,
+		Rect: r,
+	}
 }
 
 
@@ -142,7 +162,7 @@ func decompressDxt5Block(packed []byte, offsetX int, offsetY int, width int, unp
 	binary.Read(bytes.NewBuffer(packed[12:16]), binary.LittleEndian, &code)
 
 	for j := 0; j < blockSize; j++ {
-		for i :=0; i < blockSize; i++ {
+		for i := 0; i < blockSize; i++ {
 			alphaCodeIndex := uint(3*(4*j+i))
 			var alphaCode int
 
@@ -194,6 +214,11 @@ func decompressDxt5Block(packed []byte, offsetX int, offsetY int, width int, unp
 					G: (colour0.G+2*colour1.G)/3,
 					B: (colour0.B+2*colour1.B)/3,
 				}
+			}
+
+			if finalAlpha != 255 {
+				a := 0
+				a -=2
 			}
 
 			// Set alpha
