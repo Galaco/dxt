@@ -16,7 +16,6 @@ func Rgb565toargb8888(packed uint16) color.RGBA {
 	//temp = uint32(packed & 0x001F) * 255 + 16
 	//color.B = uint8((temp/32 + temp)/32)
 
-
 	colour.R = uint8((packed >> 11) & 0x1F)
 	colour.G = uint8((packed >> 5) & 0x3F)
 	colour.B = uint8((packed) & 0x1F)

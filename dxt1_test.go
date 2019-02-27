@@ -5,6 +5,7 @@ import (
 )
 
 func TestNewDxt1(t *testing.T) {
+	t.Skip()
 	//r := image.Rect(0, 0, 512, 512)
 	//
 	//img := NewDxt1(r)
